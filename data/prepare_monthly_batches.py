@@ -1,5 +1,5 @@
 """
-Step 1 - Prepare a simulated 12-month stream from the PaySim dataset.
+Prepare a simulated 12-month stream from the PaySim dataset.
 
 WHY THIS EXISTS
 ---------------
@@ -53,10 +53,10 @@ EXPECTED_COLS = [
 ]
 
 # Which simulated months get drift, and of what kind. Months are 1-based.
-#  - Month 1 is left clean because it becomes the TRAINING BASELINE (Step 2) and
-#    the reference the drift check compares against (Step 3).
+#  - Month 1 is left clean because it becomes the TRAINING BASELINE and
+#    the reference the drift check compares against.
 #  - Drift is placed BETWEEN the quarterly scheduled retrains (months 3, 6, 9, 12)
-#    so that in Step 5 it visibly triggers *off-schedule* retrains.
+#    so that it visibly triggers *off-schedule* retrains later on.
 DRIFT_PLAN = {
     5:  {"kind": "amount_inflation", "factor": 2.0},   # "transactions got bigger"
     8:  {"kind": "type_shift", "to_transfer_frac": 0.30},  # "more money via TRANSFER"
@@ -115,7 +115,7 @@ def split_into_months(df: pd.DataFrame, n_months: int, seed: int) -> list[pd.Dat
 
 def inject_amount_inflation(batch: pd.DataFrame, factor: float) -> pd.DataFrame:
     """Simulate 'transactions got bigger this month' by scaling `amount` up.
-    A PSI check on `amount` (Step 3) will see the shifted distribution."""
+    A PSI check on `amount` will see the shifted distribution."""
     batch = batch.copy()
     batch["amount"] = batch["amount"] * factor
     return batch
