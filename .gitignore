@@ -32,5 +32,6 @@ mlflow.db
 # --- Claude Code machine-local settings ---
 .claude/settings.local.json
 
-# --- Private working notes (our requirements brief, not for the public repo) ---
+# --- Private working notes (not for the public repo) ---
 SPEC.md
+notes.md
