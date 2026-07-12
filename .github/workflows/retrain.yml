@@ -1,0 +1,39 @@
+# Scheduled retraining automation - the "MLOps platform" that runs the pipeline
+# without a human. It proves the loop runs on a schedule and executes the drift
+# check + conditional retraining. It runs on SYNTHETIC data so it is fully self
+# contained (no 470 MB download, no Kaggle credentials needed).
+#
+# Note on scope: a CI runner is temporary, so the models registered here do not
+# persist and there is no live server to redeploy. In production the registry
+# would be a persistent remote store and a deploy step would refresh the running
+# service. Here the Action's job is to show the automation TRIGGERS and RUNS.
+name: Scheduled Retraining
+
+on:
+  schedule:
+    - cron: "0 3 1 * *"   # 03:00 UTC on the 1st of every month (the time trigger)
+  workflow_dispatch: {}    # also allow manual runs, for demoing on demand
+
+jobs:
+  retrain:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Generate stand-in data (synthetic PaySim feed)
+        run: python automation/make_sample_data.py --out data/raw/paysim.csv
+
+      - name: Prepare the 12 monthly batches (with injected drift)
+        run: python data/prepare_monthly_batches.py --subsample 0
+
+      - name: Run drift check + conditional retraining
+        run: python automation/retrain.py
