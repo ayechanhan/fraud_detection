@@ -24,6 +24,9 @@ mlruns/
 mlartifacts/
 mlflow.db
 
+# --- served-model prediction logs (regenerated at runtime) ---
+logs/
+
 # --- OS / editor cruft ---
 .DS_Store
 .idea/

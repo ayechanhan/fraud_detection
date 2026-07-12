@@ -13,7 +13,12 @@ simple code we fully own and can explain. /predict and /reload require the API k
 Run from the repo root (after training a model):
     python service/app.py
 """
+
+import json
+import logging
 import os
+from datetime import datetime, timezone
+from pathlib import Path
 
 import mlflow
 import mlflow.sklearn
@@ -40,6 +45,16 @@ FRAUD_THRESHOLD = 0.5  # probability at/above which we label the application "fr
 
 app = Flask(__name__)
 
+# Monitoring: append one JSON line per prediction to logs/predictions.log, so the
+# live model's behaviour (request volume, score distribution, which version
+# answered) can be watched over time - the production-side counterpart to
+# mlflow's training-time tracking.
+LOG_DIR = Path("logs")
+LOG_DIR.mkdir(exist_ok=True)
+prediction_log = logging.getLogger("predictions")
+prediction_log.setLevel(logging.INFO)
+prediction_log.addHandler(logging.FileHandler(LOG_DIR / "predictions.log"))
+
 # The model is loaded once at startup and cached in these module globals.
 _model = None
 _model_version = None
@@ -62,11 +77,13 @@ def load_model():
 @app.get("/health")
 def health():
     """Cheap liveness check - also reports which model version is serving."""
-    return jsonify({
-        "status": "ok",
-        "model_loaded": _model is not None,
-        "model_version": _model_version,
-    })
+    return jsonify(
+        {
+            "status": "ok",
+            "model_loaded": _model is not None,
+            "model_version": _model_version,
+        }
+    )
 
 
 @app.post("/predict")
@@ -74,11 +91,17 @@ def health():
 def predict():
     """Score a single application for fraud probability."""
     if _model is None:
-        return jsonify({"error": "No model loaded. Train and register a model first."}), 503
+        return (
+            jsonify({"error": "No model loaded. Train and register a model first."}),
+            503,
+        )
 
     data = request.get_json(silent=True)
     if not isinstance(data, dict):
-        return jsonify({"error": "Send a JSON object with the application fields."}), 400
+        return (
+            jsonify({"error": "Send a JSON object with the application fields."}),
+            400,
+        )
 
     missing = [f for f in FEATURES if f not in data]
     if missing:
@@ -88,12 +111,16 @@ def predict():
     row = pd.DataFrame([{f: data[f] for f in FEATURES}])
     probability = float(_model.predict_proba(row)[0, 1])
 
-    return jsonify({
+    result = {
         "fraud_probability": round(probability, 4),
         "is_fraud": probability >= FRAUD_THRESHOLD,
         "threshold": FRAUD_THRESHOLD,
         "model_version": _model_version,
-    })
+    }
+    prediction_log.info(
+        json.dumps({"time": datetime.now(timezone.utc).isoformat(), **result})
+    )
+    return jsonify(result)
 
 
 @app.post("/reload")

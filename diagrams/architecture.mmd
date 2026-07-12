@@ -1,0 +1,17 @@
+%% Architecture of the fraud-detection MLOps pipeline.
+%% Paste this into https://mermaid.live to view or export a PNG/SVG for slides.
+flowchart TB
+    A[Financial Dataset] --> B[prepare_monthly_batches.py<br/>12 monthly batches + injected drift]
+    B --> C[train.py<br/>LogisticRegression + RandomForest]
+    C --> D[(mlflow<br/>Tracking + Model Registry)]
+    D -->|loads latest model| E[Flask API<br/>/predict - API-key auth]
+    E -->|fraud probability| F[Client systems]
+
+    SCHED{{GitHub Actions<br/>monthly cron}} -->|triggers| G
+    B -->|each new month| G[drift_check.py<br/>PSI vs baseline + schedule]
+    G -->|drift OR month elapsed| H[retrain.py]
+    H -->|register new version| D
+    H -.->|POST /reload| E
+
+    D -.-> M[[Monitoring<br/>mlflow metrics - predictions.log]]
+    E -.->|logs each prediction| M
