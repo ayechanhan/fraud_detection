@@ -143,5 +143,8 @@ except Exception as exc:  # noqa: BLE001
 
 
 if __name__ == "__main__":
-    # Port 8000 to avoid clashing with the mlflow UI (5000) and macOS AirPlay.
-    app.run(host="127.0.0.1", port=8000, debug=False)
+    app.run(
+        host=os.getenv("API_HOST", "0.0.0.0"),
+        port=int(os.getenv("API_PORT", "8000")),
+        debug=False,
+    )
