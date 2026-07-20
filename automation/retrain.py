@@ -6,7 +6,7 @@ RETRAIN TRIGGERS (whichever comes first)
     - drift:    any monitored feature's PSI vs the baseline exceeds the threshold
     - schedule: a fixed cadence (every 3rd month), like a monthly/quarterly cron
 
-DESIGN CHOICES (be ready to defend)
+DESIGN CHOICES
     - The drift baseline is FIXED at month 1 - the reference the model was first
       trained and validated on. We compare every incoming month to this known-
       good reference, not to a moving target: a moving baseline can hide slow,
@@ -22,6 +22,7 @@ DESIGN CHOICES (be ready to defend)
 Run from the repo root:
     python automation/retrain.py
 """
+
 import os
 import subprocess
 import sys
@@ -35,12 +36,12 @@ from mlflow.tracking import MlflowClient
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "model"))
-from drift_check import compute_drift  # noqa: E402  (path set just above)
+from drift_check import compute_drift
 
 BATCH_DIR = ROOT / "data" / "batches"
 BASELINE = BATCH_DIR / "month_01.csv"
 N_MONTHS = 12
-SCHEDULE_EVERY = 3        # a scheduled retrain every 3rd month (quarterly cron)
+SCHEDULE_EVERY = 3  # a scheduled retrain every 3rd month (quarterly cron)
 DRIFT_THRESHOLD = 0.25
 TRACKING_URI = "sqlite:///mlflow.db"
 MODEL_NAME = "fraud_model"
@@ -65,7 +66,10 @@ def retrain_on(batch_path: Path):
     scheduled GitHub Action does."""
     subprocess.run(
         [sys.executable, str(ROOT / "model" / "train.py"), "--data", str(batch_path)],
-        cwd=ROOT, check=True, capture_output=True, text=True,
+        cwd=ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
     )
     return latest_version()
 
@@ -114,11 +118,12 @@ def main() -> None:
         else:
             action = "skip"
 
-        print(f"{month:>5} {drift['max_psi']:>8.3f} "
-              f"{('YES' if drift['drifted'] else 'no'):>7} {scheduled:>10}   {action}")
+        print(
+            f"{month:>5} {drift['max_psi']:>8.3f} "
+            f"{('YES' if drift['drifted'] else 'no'):>7} {scheduled:>10}   {action}"
+        )
 
     print(f"\nFinal registered version: {latest_version()}")
-    print("Each retrain above also refreshed the running API (when it was up).")
 
 
 if __name__ == "__main__":

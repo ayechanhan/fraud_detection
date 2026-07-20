@@ -14,7 +14,7 @@ Rule-of-thumb thresholds (widely used in credit/fraud):
     0.10 - 0.25  -> moderate shift, worth watching
     PSI > 0.25   -> significant shift, retrain
 
-WHY PSI (things to be ready to defend)
+WHY PSI
 --------------------------------------
 - It is UNSUPERVISED: it looks only at the input feature distributions, so it
   works WITHOUT fraud labels. In production the true fraud label arrives weeks
@@ -28,6 +28,7 @@ command line below is for demonstrating drift on a single batch.
 Run from the repo root:
     python model/drift_check.py --batch data/batches/month_05.csv
 """
+
 from __future__ import annotations
 
 import argparse
@@ -39,12 +40,19 @@ import pandas as pd
 DEFAULT_BASELINE = Path("data/batches/month_01.csv")
 DRIFT_THRESHOLD = 0.25  # PSI above this on any feature = significant drift
 
-# The features we monitor - the same inputs the model uses.
-NUMERIC = ["amount", "oldbalanceOrg", "newbalanceOrig", "oldbalanceDest", "newbalanceDest"]
+NUMERIC = [
+    "amount",
+    "oldbalanceOrg",
+    "newbalanceOrig",
+    "oldbalanceDest",
+    "newbalanceDest",
+]
 CATEGORICAL = ["type"]
 
 
-def psi_numeric(baseline: np.ndarray, new: np.ndarray, bins: int = 10, eps: float = 1e-4) -> float:
+def psi_numeric(
+    baseline: np.ndarray, new: np.ndarray, bins: int = 10, eps: float = 1e-4
+) -> float:
     """PSI for a numeric feature. Bin edges come from the baseline's quantiles,
     so we compare like-for-like regions of the distribution."""
     baseline = np.asarray(baseline, dtype=float)
@@ -54,7 +62,9 @@ def psi_numeric(baseline: np.ndarray, new: np.ndarray, bins: int = 10, eps: floa
         return 0.0  # baseline is constant -> no meaningful bins
     interior = edges[1:-1]
     n_bins = len(edges) - 1
-    base_counts = np.bincount(np.digitize(baseline, interior), minlength=n_bins).astype(float)
+    base_counts = np.bincount(np.digitize(baseline, interior), minlength=n_bins).astype(
+        float
+    )
     new_counts = np.bincount(np.digitize(new, interior), minlength=n_bins).astype(float)
     base_prop = np.clip(base_counts / base_counts.sum(), eps, None)
     new_prop = np.clip(new_counts / new_counts.sum(), eps, None)
@@ -74,8 +84,11 @@ def psi_categorical(baseline: pd.Series, new: pd.Series, eps: float = 1e-4) -> f
     return float(psi)
 
 
-def compute_drift(baseline_df: pd.DataFrame, batch_df: pd.DataFrame,
-                  threshold: float = DRIFT_THRESHOLD) -> dict:
+def compute_drift(
+    baseline_df: pd.DataFrame,
+    batch_df: pd.DataFrame,
+    threshold: float = DRIFT_THRESHOLD,
+) -> dict:
     """Compute PSI per feature and decide whether the batch has drifted.
 
     Returns a dict with the per-feature PSI, the worst feature, and a boolean
@@ -123,10 +136,18 @@ def print_report(result: dict, baseline_path: Path, batch_path: Path) -> None:
 
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Check a batch for data drift (PSI).")
-    p.add_argument("--baseline", type=Path, default=DEFAULT_BASELINE,
-                   help="CSV the current model was trained on.")
-    p.add_argument("--batch", type=Path, required=True,
-                   help="Incoming batch CSV to check for drift.")
+    p.add_argument(
+        "--baseline",
+        type=Path,
+        default=DEFAULT_BASELINE,
+        help="CSV the current model was trained on.",
+    )
+    p.add_argument(
+        "--batch",
+        type=Path,
+        required=True,
+        help="Incoming batch CSV to check for drift.",
+    )
     p.add_argument("--threshold", type=float, default=DRIFT_THRESHOLD)
     return p.parse_args()
 

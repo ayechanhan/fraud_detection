@@ -1,5 +1,5 @@
 """
-Generate a small SYNTHETIC PaySim-shaped dataset.
+Generate a small SYNTHETIC dataset.
 
 Why this exists: the real PaySim file is ~470 MB and is not committed, so CI
 runners (and anyone who has not downloaded it) have no data. This script
@@ -11,6 +11,7 @@ example inside the scheduled GitHub Action).
 Run:
     python automation/make_sample_data.py --rows 120000 --out data/raw/paysim.csv
 """
+
 import argparse
 from pathlib import Path
 
@@ -46,27 +47,33 @@ def make_frame(rows: int, fraud_rate: float, seed: int) -> pd.DataFrame:
     old_dest[fraud_idx] = 0.0
     new_dest[fraud_idx] = 0.0
 
-    return pd.DataFrame({
-        "step": rng.integers(1, 745, rows),
-        "type": types,
-        "amount": amount,
-        "nameOrig": [f"C{i}" for i in range(rows)],
-        "oldbalanceOrg": old_org,
-        "newbalanceOrig": new_org,
-        "nameDest": [f"M{i}" for i in range(rows)],
-        "oldbalanceDest": old_dest,
-        "newbalanceDest": new_dest,
-        "isFraud": is_fraud,
-        "isFlaggedFraud": ((types == "TRANSFER") & (amount > 200000)).astype(int),
-    })
+    return pd.DataFrame(
+        {
+            "step": rng.integers(1, 745, rows),
+            "type": types,
+            "amount": amount,
+            "nameOrig": [f"C{i}" for i in range(rows)],
+            "oldbalanceOrg": old_org,
+            "newbalanceOrig": new_org,
+            "nameDest": [f"M{i}" for i in range(rows)],
+            "oldbalanceDest": old_dest,
+            "newbalanceDest": new_dest,
+            "isFraud": is_fraud,
+            "isFlaggedFraud": ((types == "TRANSFER") & (amount > 200000)).astype(int),
+        }
+    )
 
 
 def main() -> None:
     p = argparse.ArgumentParser(description="Generate synthetic PaySim-shaped data.")
     p.add_argument("--rows", type=int, default=120_000)
-    p.add_argument("--fraud-rate", type=float, default=0.01,
-                   help="Deliberately higher than real PaySim (~0.0013) so the small "
-                        "CI batches always contain enough fraud examples to train.")
+    p.add_argument(
+        "--fraud-rate",
+        type=float,
+        default=0.01,
+        help="Deliberately higher than real PaySim (~0.0013) so the small "
+        "CI batches always contain enough fraud examples to train.",
+    )
     p.add_argument("--out", type=Path, default=Path("data/raw/paysim.csv"))
     p.add_argument("--seed", type=int, default=42)
     args = p.parse_args()
@@ -74,7 +81,9 @@ def main() -> None:
     args.out.parent.mkdir(parents=True, exist_ok=True)
     df = make_frame(args.rows, args.fraud_rate, args.seed)
     df.to_csv(args.out, index=False)
-    print(f"Wrote {len(df):,} synthetic rows ({int(df['isFraud'].sum()):,} fraud) to {args.out}")
+    print(
+        f"Wrote {len(df):,} synthetic rows ({int(df['isFraud'].sum()):,} fraud) to {args.out}"
+    )
 
 
 if __name__ == "__main__":

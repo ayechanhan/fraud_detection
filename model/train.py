@@ -9,7 +9,7 @@ WHAT THIS DOES
 4. Registers the BETTER model (by PR-AUC) in the mlflow Model Registry, so the
    serving API can load the latest registered fraud model and serve it.
 
-WHY THESE CHOICES (things to be ready to defend)
+WHY THESE CHOICES
 ------------------------------------------------
 - We drop `nameOrig`/`nameDest` (per-transaction IDs -> leakage/overfitting),
   `isFlaggedFraud` (a business RULE, not a learned signal), and `step` (a
@@ -17,7 +17,7 @@ WHY THESE CHOICES (things to be ready to defend)
 - Fraud is ~0.13% of rows, so ACCURACY is meaningless (predict "never fraud" =
   99.87% accurate and useless). We judge on PR-AUC / precision / recall and use
   `class_weight="balanced"` so the rare fraud class is not ignored.
-- The whole preprocessing (scaling + one-hot of `type`) lives INSIDE an sklearn
+- The whole preprocessing lives INSIDE an sklearn
   Pipeline, so the saved model is self-contained: the API just passes the raw
   fields and the model does its own preprocessing.
 - mlflow points at a SQLite database (`sqlite:///mlflow.db`) because the Model
@@ -116,9 +116,9 @@ def evaluate(pipe: Pipeline, X_test: pd.DataFrame, y_test: pd.Series) -> dict:
         "precision": precision_score(y_test, pred, zero_division=0),
         "recall": recall_score(y_test, pred, zero_division=0),
         "f1": f1_score(y_test, pred, zero_division=0),
-        "true_positives": int(tp),  # frauds we caught
-        "false_negatives": int(fn),  # frauds we missed
-        "false_positives": int(fp),  # false alarms
+        "true_positives": int(tp),
+        "false_negatives": int(fn),
+        "false_positives": int(fp),
         "true_negatives": int(tn),
     }
 
