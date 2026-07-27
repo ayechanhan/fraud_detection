@@ -21,7 +21,10 @@ ssh -i your-key.pem ubuntu@<EC2_PUBLIC_IP>
 ## 3. One-time setup
 
 ```bash
-sudo apt update && sudo apt install -y python3-venv git tmux
+sudo apt update
+sudo apt install build-essential zlib1g-dev libncurses5-dev libgdbm-dev libnss3-dev libssl-dev libreadline-dev libffi-dev libsqlite3-dev wget libbz2-dev liblzma-dev software-properties-common
+sudo add-apt-repository ppa:deadsnakes/pap
+sudo apt update && sudo apt install -y python3.13 python3.13-venv python3.13-dev tmux
 
 git clone https://github.com/ayechanhan/fraud_detection.git
 cd fraud_detection
